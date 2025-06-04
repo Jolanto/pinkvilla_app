@@ -1,23 +1,38 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_html/flutter_html.dart';
+import 'dart:math';
+import 'settings_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pinkvilla News',
-      theme: ThemeData.dark(),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Pinkvilla News',
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: mode,
+          home: const HomeScreen(),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,23 +53,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<List<dynamic>> fetchNews() async {
-    await Future.delayed(const Duration(seconds: 1));
-    allNews = List.generate(10, (index) {
-      return {
-        'node': {
-          'imageUrl': '',
-          'title': 'Placeholder News Title $index',
-          'type': index.isEven ? 'Korean' : 'Lifestyle',
-          'postDateFormat': 'April 30, 2025',
-        }
-      };
-    });
-    return allNews;
+    const apiUrl = 'https://englishapi.pinkvilla.com/app-api/v1/feed/site-feed.php?type=entertainment';
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = json.decode(response.body);
+        allNews = jsonData;
+        return allNews;
+      } else {
+        throw Exception('Failed to load news: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching news: $e');
+      throw Exception('Error fetching news: $e');
+    }
   }
 
   List<dynamic> get filteredNews {
     if (selectedCategory == 'All') return allNews;
-    return allNews.where((item) => item['node']['type'] == selectedCategory).toList();
+    return allNews.where((item) => item['type'] == selectedCategory).toList();
   }
 
   void onCategorySelected(String category) {
@@ -70,44 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('PINKVILLA', style: TextStyle(color: Colors.pinkAccent)),
         backgroundColor: Colors.black,
-      ),
-      drawer: Drawer(
-        backgroundColor: Colors.grey[900],
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.pinkAccent),
-              child: const Text(
-                'Menu',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home, color: Colors.white),
-              title: const Text('Home', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bookmark, color: Colors.white),
-              title: const Text('Bookmarks', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                // Add your navigation logic here
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: Colors.white),
-              title: const Text('Settings', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                // Add your navigation logic here
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.pinkAccent),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: newsList,
@@ -140,21 +130,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView.builder(
                   itemCount: filteredNews.length,
                   itemBuilder: (context, index) {
-                    final item = filteredNews[index]['node'];
+                    final item = filteredNews[index];
+                    final imageUrl = item['imageUrl'] ?? '';
+                    final title = item['title'] ?? 'No Title';
+                    final category = item['type'] ?? 'Unknown';
+                    final date = item['postDateFormat'] ?? '';
+                    final articleId = item['nid']?.toString() ?? '';
+
                     return NewsCard(
-                      imageUrl: item['imageUrl'],
-                      title: item['title'],
-                      category: item['type'],
-                      date: item['postDateFormat'],
+                      imageUrl: imageUrl,
+                      title: title,
+                      category: category,
+                      date: date,
+                      articleId: articleId,
                       onTap: () {
+                        print('🧭 Navigating to articleId: $articleId');
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => NewsDetailPage(
-                              title: item['title'],
-                              imageUrl: item['imageUrl'],
-                              category: item['type'],
-                              date: item['postDateFormat'],
+                              articleId: articleId,
+                              title: title,
+                              imageUrl: imageUrl,
+                              category: category,
+                              date: date,
                             ),
                           ),
                         );
@@ -184,16 +183,9 @@ class CategorySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = [
-      'All',
-      'Korean',
-      'Lifestyle',
-      'Web Stories',
-      'Videos',
-      'Trending',
-      'TV',
-      'Web series',
-      'Fashion',
-      'Entertainment'
+      'All', 'Korean', 'Lifestyle', 'Web Stories',
+      'Videos', 'Trending', 'TV', 'Web series',
+      'Fashion', 'Entertainment'
     ];
 
     return SizedBox(
@@ -237,6 +229,7 @@ class NewsCard extends StatelessWidget {
   final String category;
   final String title;
   final String date;
+  final String articleId;
   final VoidCallback? onTap;
 
   const NewsCard({
@@ -245,6 +238,7 @@ class NewsCard extends StatelessWidget {
     required this.category,
     required this.title,
     required this.date,
+    required this.articleId,
     this.onTap,
   });
 
@@ -283,17 +277,11 @@ class NewsCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(category,
-                      style: const TextStyle(
-                          color: Colors.orange, fontWeight: FontWeight.bold)),
+                  Text(category, style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(date,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(date, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
@@ -304,55 +292,108 @@ class NewsCard extends StatelessWidget {
   }
 }
 
+Future<String> fetchArticleContent(String articleId) async {
+  final url = 'https://englishapi.pinkvilla.com/jsondata/v1/id/$articleId';
+  print('Fetching article: $url');
+
+  try {
+    final response = await http.get(Uri.parse(url));
+    print('HTTP status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      print('Article fetched successfully');
+
+      final descriptionList = jsonData['description'] as List<dynamic>?;
+      if (descriptionList == null || descriptionList.isEmpty) {
+        print('No description found in the article');
+        return '<p>No content available.</p>';
+      }
+
+      final buffer = StringBuffer();
+      for (final block in descriptionList) {
+        if (block['type'] == 'text' && block['newContent'] != null) {
+          buffer.writeln(block['newContent']);
+        } else if (block['type'] == 'image' && block['src'] != null) {
+          final caption = block['caption'] ?? '';
+          buffer.writeln(
+              '<figure><img src="${block['src']}" alt="$caption"/><figcaption>$caption</figcaption></figure>');
+        }
+      }
+
+      final finalHtml = buffer.toString();
+      print('Final HTML content length: ${finalHtml.length}');
+      return finalHtml.isNotEmpty ? finalHtml : '<p>No content available.</p>';
+    } else {
+      throw Exception('Failed to load article content (status ${response.statusCode})');
+    }
+  } catch (e) {
+    print('Error fetching article: $e');
+    return '<p>Error loading article content.</p>';
+  }
+}
+
 
 class NewsDetailPage extends StatelessWidget {
+  final String articleId;
   final String title;
   final String imageUrl;
   final String category;
   final String date;
 
   const NewsDetailPage({
-    super.key,
+    Key? key,
+    required this.articleId,
     required this.title,
     required this.imageUrl,
     required this.category,
     required this.date,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    print('NewsDetailPage opened for articleId: $articleId');
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Article Details', style: TextStyle(color: Colors.pinkAccent)),
+        title: const Text('Article', style: TextStyle(color: Colors.pinkAccent)),
         backgroundColor: Colors.black,
       ),
       backgroundColor: Colors.black,
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          imageUrl.isNotEmpty
-              ? ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(imageUrl),
-          )
-              : Container(height: 200, color: Colors.grey[700]),
-          const SizedBox(height: 16),
-          Text(category.toUpperCase(),
-              style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const Divider(height: 32, color: Colors.grey),
-          const Text(
-            'This is a placeholder for the full article content. '
-                'You can replace it with actual content from your API.',
-            style: TextStyle(fontSize: 16),
-          ),
-        ],
+      body: FutureBuilder<String>(
+        future: fetchArticleContent(articleId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error loading article content'));
+          } else {
+            final content = snapshot.data ?? '';
+            print('Content: ${content.substring(0, min(300, content.length))}');
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  imageUrl.isNotEmpty
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(imageUrl),
+                  )
+                      : Container(height: 200, color: Colors.grey[700]),
+                  const SizedBox(height: 16),
+                  Text(category.toUpperCase(), style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  const Divider(height: 32, color: Colors.grey),
+                  Html(data: content),
+                ],
+              ),
+            );
+          }
+        },
       ),
     );
   }
