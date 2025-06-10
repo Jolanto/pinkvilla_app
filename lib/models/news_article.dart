@@ -1,23 +1,28 @@
 class NewsArticle {
   final String id;
   final String title;
-  final String imageUrl;
   final String category;
+  final String url;
+  final String imageUrl;
   final String date;
 
   NewsArticle({
     required this.id,
     required this.title,
-    required this.imageUrl,
     required this.category,
+    required this.url,
+    required this.imageUrl,
     required this.date,
   });
 
-  factory NewsArticle.fromJson(Map<String, dynamic> json) => NewsArticle(
-    id:     json['nid'].toString(),
-    title:  json['title'] ?? 'No Title',
-    imageUrl: json['imageUrl'] ?? json['featuredImage'] ?? '',
-    category: json['type'] ?? 'Unknown',
-    date:   json['postDateFormat'] ?? '',
-  );
+  factory NewsArticle.fromJson(Map<String, dynamic> json) {
+    return NewsArticle(
+      id: json['nid'].toString() ?? '',
+      title: json['title'] ?? '',
+      category: json['type'] ?? '',
+      url: 'https://www.pinkvilla.com${json['path'] ?? ''}',
+      imageUrl: json['imageUrl'] ?? '',
+      date: json['postDateFormat'] ?? '',
+    );
+  }
 }

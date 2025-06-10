@@ -20,6 +20,33 @@
       return list.map((e) => NewsArticle.fromJson(e)).toList();
     }
 
+    Future<List<NewsArticle>> fetchBoxOfficeNews() async {
+      final response = await http.get(
+        Uri.parse('https://englishapi.pinkvilla.com/app-api/v1/section.php?type=content_box-office'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load box office news');
+      }
+
+      final List<dynamic> list = json.decode(response.body);
+      return list.map((e) => NewsArticle.fromJson(e)).toList();
+    }
+
+    Future<List<NewsArticle>> fetchLatestNews() async {
+      final response = await http.get(
+        Uri.parse('https://englishapi.pinkvilla.com/app-api/v1/latest_articles_widget'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load latest news');
+      }
+
+      final List<dynamic> list = json.decode(response.body);
+      return list.map((e) => NewsArticle.fromJson(e)).toList();
+    }
+
+
     Future<String> fetchArticleHtml(String articleId) async {
       final res = await http.get(Uri.parse('$_detailBase$articleId'));
       if (res.statusCode != 200) {

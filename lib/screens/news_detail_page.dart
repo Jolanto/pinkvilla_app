@@ -45,12 +45,21 @@ class NewsDetailPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(article.title,
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                        fontFamily: 'Poppins-Medium', fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text(article.date,
                     style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 const Divider(height: 32, color: Colors.grey),
-                Html(data: content),
+                Html(
+                  data: content,
+                  style: {
+                    "*": Style(
+                      fontFamily: 'Poppins-Medium',
+                      fontSize: FontSize(14.0),
+                      color: Colors.white,
+                    ),
+                  },
+                ),
               ],
             ),
           );
