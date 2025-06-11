@@ -3,7 +3,8 @@
   import '../screens/news_detail_page.dart';
   import 'package:http/http.dart' as http;
   import '../models/news_article.dart';
-  import '../models/news_article.dart';
+  import '../models/footer_tab.dart';
+
 
   class NewsService {
     static const _listUrl =
@@ -18,6 +19,25 @@
       }
       final list = json.decode(res.body) as List<dynamic>;
       return list.map((e) => NewsArticle.fromJson(e)).toList();
+    }
+
+    Future<List<FooterTab>> fetchFooterTabs() async {
+      final res = await http.get(
+        Uri.parse("https://fastapi.pinkvilla.com/v1/section/footer-menu"),
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception("Failed to load footer tabs");
+      }
+
+      final jsonData = json.decode(res.body);
+
+      // Make sure 'data' and 'content' exist and are lists
+      final content = (jsonData['data']?['content'] ?? []) as List<dynamic>;
+
+      return content
+          .map((item) => FooterTab.fromJson(item as Map<String, dynamic>))
+          .toList();
     }
 
     Future<List<NewsArticle>> fetchBoxOfficeNews() async {
@@ -44,6 +64,41 @@
 
       final List<dynamic> list = json.decode(response.body);
       return list.map((e) => NewsArticle.fromJson(e)).toList();
+    }
+
+    Future<List<NewsArticle>> fetchArticlesFromUrl(String url) async {
+      if (url.isEmpty) return [];
+
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode != 200) {
+        throw Exception('Failed to load articles from $url');
+      }
+
+      final data = json.decode(res.body);
+      final rawList = data is List
+          ? data
+          : (data['nodes'] ?? data['data'] ?? data) as List<dynamic>?;
+
+      if (rawList == null) return [];
+
+      return rawList.map((node) => NewsArticle.fromJson(node)).toList();
+    }
+
+    Future<List<FooterTab>> fetchHeaderTabs() async {
+      final res = await http.get(Uri.parse('https://englishapi.pinkvilla.com/app-api/v1/header-menu'));
+
+      if (res.statusCode != 200) {
+        throw Exception('Failed to load header tabs');
+      }
+
+      final jsonData = json.decode(res.body);
+      final content = jsonData['data']['content'] as List;
+
+      return content.map((item) => FooterTab(
+        id: item['id'].toString(),
+        title: item['title'],
+        apiUrl: item['api_url'] ?? '',
+      )).toList();
     }
 
 

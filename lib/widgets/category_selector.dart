@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
+import '../models/footer_tab.dart';
 
 class CategorySelector extends StatelessWidget {
-  final String selected;
-  final void Function(String) onChanged;
+  final List<FooterTab> categories;
+  final FooterTab selected;
+  final void Function(FooterTab) onChanged;
+
   const CategorySelector({
     super.key,
+    required this.categories,
     required this.selected,
     required this.onChanged,
   });
-
-  static const _categories = [
-    'All', 'Korean', 'Lifestyle', 'Web Stories',
-    'Videos', 'Trending', 'TV', 'Web series',
-    'Fashion', 'Entertainment',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +20,12 @@ class CategorySelector extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: _categories.length,
+        itemCount: categories.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final category = _categories[i];
-          final selectedFlag = category == selected;
+          final category = categories[i];
+          final selectedFlag = category.title == selected.title;
+
           return GestureDetector(
             onTap: () => onChanged(category),
             child: Container(
@@ -37,7 +36,7 @@ class CategorySelector extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  category,
+                  category.title,
                   style: TextStyle(
                     color: selectedFlag ? Colors.white : Colors.grey[300],
                     fontWeight: FontWeight.w500,
