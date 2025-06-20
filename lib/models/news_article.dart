@@ -17,7 +17,7 @@ class NewsArticle {
 
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
     return NewsArticle(
-      id: json['nid'].toString() ?? '',
+      id: json['nid'].toString(),
       title: json['title'] ?? '',
       category: json['type'] ?? '',
       url: 'https://www.pinkvilla.com${json['path'] ?? ''}',

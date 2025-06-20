@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/news_article.dart';
 import '../models/footer_tab.dart';
+import '../models/header_tab.dart';
 import '../services/news_service.dart';
-import '../widgets/category_selector.dart';
 import '../widgets/news_card.dart';
+import '../widgets/header_navigator.dart';
 import '../screens/news_detail_page.dart';
 import 'settings_page.dart';
+import 'sections/entertainment_section.dart';
+import 'sections/box_office_section.dart';
+import 'sections/latest_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,78 +20,39 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-
-  // ──────────────────────────── DATA ────────────────────────────
   final _service = NewsService();
 
-  late Future<List<NewsArticle>> _entNewsF;      // Entertainment
-  late Future<List<NewsArticle>> _boxOfficeF;    // Box Office
-  late Future<List<NewsArticle>> _latestNewsF;   // Latest
+  late Future<List<NewsArticle>> _entNewsF;
+  late Future<List<NewsArticle>> _boxOfficeF;
+  late Future<List<NewsArticle>> _latestNewsF;
 
   String _selectedCategory = 'All';
   List<NewsArticle> _entAll = [];
   List<FooterTab> _footerTabs = [];
   bool _isLoadingTabs = true;
+  List<HeaderTab> _headerTabs = [];
+  String _selectedApiUrl = '';
+  late Future<List<NewsArticle>> _futureArticles;
+  bool _isLoadingHeaderTabs = true;
 
-  // ──────────────────────────── INIT ────────────────────────────
   @override
   void initState() {
     super.initState();
-    _loadTabs();
-    _entNewsF   = _service.fetchNews();
-    _boxOfficeF = _service.fetchBoxOfficeNews();
-    _latestNewsF = _service.fetchLatestNews();
-  }
-
-  // ──────────────────────────── REFRESH HELPERS ────────────────────────────
-  Future<void> _refreshEntertainment() async {
-    final fresh = await _service.fetchNews();
-    setState(() {
-      _entAll   = fresh;
-      _entNewsF = Future.value(fresh);
+    _loadInitialTabs();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initTabs();
+      _entNewsF = _service.fetchNews();
+      _boxOfficeF = _service.fetchBoxOfficeNews();
+      _latestNewsF = _service.fetchLatestNews();
     });
   }
 
-  Future<void> _loadTabs() async {
-    try {
-      final tabs = await _service.fetchFooterTabs();
-      setState(() {
-        _footerTabs = [
-          ...tabs,
-          FooterTab(id: '0', title: "Settings", apiUrl: ""), // Append settings
-        ];
-        _isLoadingTabs = false;
-      });
-    } catch (e) {
-      debugPrint('Error fetching footer tabs: $e');
-    }
-  }
-
-  Future<void> _loadNewsFromFooter() async {
-    final footerItems = await _service.fetchFooterTabs(); // This should fetch the footer API
-    final futures = footerItems.map((item) async {
-      final url = item.apiUrl;
-      if (url.isEmpty) return [];
-
-      return await _service.fetchArticlesFromUrl(url);
-    }).toList();
-
-    final results = await Future.wait(futures);
-  }
-
-  final List<IconData> _tabIcons = [
-    Icons.article,
-    Icons.fiber_new,
-    Icons.tv,
-    Icons.movie,
-    Icons.settings,
-  ];
-
-  IconData _getIcon(int index) {
-    if (index < _tabIcons.length) {
-      return _tabIcons[index];
-    }
-    return Icons.article;
+  Future<void> _refreshEntertainment() async {
+    final fresh = await _service.fetchNews();
+    setState(() {
+      _entAll = fresh;
+      _entNewsF = Future.value(fresh);
+    });
   }
 
   Future<void> _refreshBoxOffice() async {
@@ -100,205 +65,67 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _latestNewsF = Future.value(fresh));
   }
 
-  // ──────────────────────────── FILTER ────────────────────────────
-  List<NewsArticle> get _filteredEnt =>
-      _selectedCategory == 'All'
-          ? _entAll
-          : _entAll.where((n) => n.category == _selectedCategory).toList();
+  void _initTabs() async {
+    final tabs = await _service.fetchHeaderTabs();
+    if (tabs.isNotEmpty) {
+      setState(() {
+        _headerTabs = tabs;
+        _selectedApiUrl = tabs.first.apiUrl;
+        _futureArticles = _service.fetchArticlesByUrl(_selectedApiUrl);
+        _isLoadingHeaderTabs = false;
+      });
+    } else {
+      setState(() => _isLoadingHeaderTabs = false);
+    }
+  }
 
-  // ──────────────────────────── PAGES LIST ────────────────────────────
-  List<Widget> get _pages => [
-    _buildEntertainmentPage(),
-    _buildBoxOfficePage(),
-    _buildLatestPage(),
-    const SettingsPage(),
+  Future<void> _loadInitialTabs() async {
+    final tabs = await _service.fetchFooterTabs();
+    setState(() {
+      _footerTabs = [...tabs, FooterTab(id: '0', title: "Settings", apiUrl: "")];
+      _isLoadingTabs = false;
+    });
+  }
+
+  List<NewsArticle> get _filteredEnt =>
+      _selectedCategory == 'All' ? _entAll : _entAll.where((n) => n.category == _selectedCategory).toList();
+
+  final List<IconData> _tabIcons = [
+    Icons.article,
+    Icons.fiber_new,
+    Icons.tv,
+    Icons.movie,
+    Icons.settings,
   ];
 
-  // ──────────────────────────── ENTERTAINMENT ────────────────────────────
-  Widget _buildEntertainmentPage() => FutureBuilder<List<NewsArticle>>(
-    future: _entNewsF,
-    builder: (_, snap) {
-      if (snap.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      } else if (snap.hasError) {
-        return Center(child: Text('Error: ${snap.error}'));
-      }
-      _entAll = snap.data ?? [];
+  IconData _getIcon(int index) => index < _tabIcons.length ? _tabIcons[index] : Icons.article;
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CategorySelector(
-            selected: _selectedCategory,
-            onChanged: (c) => setState(() => _selectedCategory = c),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Top Stories',
-              style: TextStyle(
-                color: Colors.pinkAccent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshEntertainment,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: _filteredEnt.length,
-                itemBuilder: (_, i) {
-                  final a = _filteredEnt[i];
-                  return NewsCard(
-                    article: a,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NewsDetailPage(article: a),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-
-  Widget _buildBoxOfficePage() => FutureBuilder<List<NewsArticle>>(
-    future: _boxOfficeF,
-    builder: (_, snap) {
-      if (snap.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      } else if (snap.hasError) {
-        return Center(child: Text('Error: ${snap.error}'));
-      }
-      final list = snap.data ?? [];
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Box Office',
-              style: TextStyle(
-                color: Colors.pinkAccent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshBoxOffice,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: list.length,
-                itemBuilder: (_, i) {
-                  final a = list[i];
-                  return NewsCard(
-                    article: a,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NewsDetailPage(article: a),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-
-  // ──────────────────────────── LATEST ────────────────────────────
-  Widget _buildLatestPage() => FutureBuilder<List<NewsArticle>>(
-    future: _latestNewsF,
-    builder: (_, snap) {
-      if (snap.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      } else if (snap.hasError) {
-        return Center(child: Text('Error: ${snap.error}'));
-      }
-      final list = snap.data ?? [];
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Latest',
-              style: TextStyle(
-                color: Colors.pinkAccent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshLatest,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: list.length,
-                itemBuilder: (_, i) {
-                  final a = list[i];
-                  return NewsCard(
-                    article: a,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NewsDetailPage(article: a),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-
-  // ──────────────────────────── BUILD ────────────────────────────
   Widget _buildTabContent(FooterTab tab) {
+    final apiUrlToUse = _selectedApiUrl.isNotEmpty ? _selectedApiUrl : tab.apiUrl;
     return FutureBuilder<List<NewsArticle>>(
-      future: _service.fetchArticlesFromUrl(tab.apiUrl),
+      future: _service.fetchArticlesFromUrl(apiUrlToUse),
       builder: (_, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snap.hasError) {
-          return Center(child: Text('Error: ${snap.error}', style: TextStyle(color: Colors.red)));
+          return Center(child: Text('Error: \${snap.error}', style: TextStyle(color: Colors.red)));
         }
 
         final list = snap.data ?? [];
-
         return RefreshIndicator(
-          onRefresh: () => _loadNewsFromFooter(),
+          onRefresh: () async {
+            final fresh = await _service.fetchArticlesFromUrl(apiUrlToUse);
+            setState(() => _futureArticles = Future.value(fresh));
+          },
           child: ListView.builder(
             itemCount: list.length,
-            itemBuilder: (_, i) {
-              final a = list[i];
-              return NewsCard(
-                article: a,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NewsDetailPage(article: a),
-                  ),
-                ),
-              );
-            },
+            itemBuilder: (_, i) => NewsCard(
+              article: list[i],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => NewsDetailPage(article: list[i])),
+              ),
+            ),
           ),
         );
       },
@@ -307,13 +134,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingTabs) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+    if (_isLoadingTabs || _isLoadingHeaderTabs) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final currentTab = _footerTabs[_currentIndex];
+    final isSettings = currentTab.title == 'Settings';
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -322,12 +148,32 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.black,
         automaticallyImplyLeading: false,
       ),
-      body: currentTab.title == 'Settings'
-          ? const SettingsPage()
-          : _buildTabContent(currentTab),
+      body: Column(
+        children: [
+          if (!isSettings && _headerTabs.isNotEmpty)
+            HeaderNavigator(
+              tabs: _headerTabs,
+              selectedApiUrl: _selectedApiUrl,
+              onTabSelected: (tab) {
+                setState(() {
+                  _selectedApiUrl = tab.apiUrl;
+                  _futureArticles = _service.fetchArticlesByUrl(tab.apiUrl);
+                });
+              },
+            ),
+          Expanded(
+            child: isSettings
+                ? const SettingsPage()
+                : _buildTabContent(currentTab),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) => setState(() {
+          _currentIndex = i;
+          _selectedApiUrl = _footerTabs[i].apiUrl;
+        }),
         selectedItemColor: Colors.pinkAccent,
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.black,

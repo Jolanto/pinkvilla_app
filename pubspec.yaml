@@ -1,4 +1,4 @@
-  name: pinkvilla_app
+  name: Pinkvilla
   description: "A new Flutter project."
   # The following line prevents the package from being accidentally published to
   # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -37,6 +37,7 @@
     url_launcher: ^6.3.1
     flutter_launcher_icons: ^0.14.3
     flutter_native_splash: ^2.4.6
+    provider: ^6.1.5
 
   flutter_icons:
     android: true

@@ -4,6 +4,7 @@
   import 'package:http/http.dart' as http;
   import '../models/news_article.dart';
   import '../models/footer_tab.dart';
+  import '../models/header_tab.dart';
 
 
   class NewsService {
@@ -84,8 +85,10 @@
       return rawList.map((node) => NewsArticle.fromJson(node)).toList();
     }
 
-    Future<List<FooterTab>> fetchHeaderTabs() async {
-      final res = await http.get(Uri.parse('https://englishapi.pinkvilla.com/app-api/v1/header-menu'));
+    Future<List<HeaderTab>> fetchHeaderTabs() async {
+      final res = await http.get(
+        Uri.parse('https://fastapi.pinkvilla.com/v1/section/header-menu'),
+      );
 
       if (res.statusCode != 200) {
         throw Exception('Failed to load header tabs');
@@ -94,11 +97,21 @@
       final jsonData = json.decode(res.body);
       final content = jsonData['data']['content'] as List;
 
-      return content.map((item) => FooterTab(
-        id: item['id'].toString(),
-        title: item['title'],
-        apiUrl: item['api_url'] ?? '',
-      )).toList();
+      return content.map((item) => HeaderTab.fromJson(item)).toList();
+    }
+
+
+
+    Future<List<NewsArticle>> fetchArticlesByUrl(String apiUrl) async {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        return data.map((item) => NewsArticle.fromJson(item)).toList();
+      } else {
+        throw Exception('Failed to load articles from $apiUrl');
+      }
     }
 
 
