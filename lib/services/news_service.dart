@@ -33,7 +33,6 @@
 
       final jsonData = json.decode(res.body);
 
-      // Make sure 'data' and 'content' exist and are lists
       final content = (jsonData['data']?['content'] ?? []) as List<dynamic>;
 
       return content

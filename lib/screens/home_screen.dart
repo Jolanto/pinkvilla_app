@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadInitialTabs() async {
     final tabs = await _service.fetchFooterTabs();
     setState(() {
-      _footerTabs = [...tabs, FooterTab(id: '0', title: "Settings", apiUrl: "")];
+      _footerTabs = tabs;
       _isLoadingTabs = false;
     });
   }
@@ -139,14 +139,61 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final currentTab = _footerTabs[_currentIndex];
-    final isSettings = currentTab.title == 'Settings';
+    final isSettings = false;
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('PINKVILLA', style: TextStyle(color: Colors.pinkAccent)),
         backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
+        iconTheme: const IconThemeData(color: Colors.pinkAccent), // Hamburger icon color
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.pinkAccent),
+              child: const Text(
+                'PINKVILLA Menu',
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 0);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('About'),
+              onTap: () {
+                Navigator.pop(context);
+                showAboutDialog(
+                  context: context,
+                  applicationName: "PINKVILLA",
+                  applicationVersion: "1.0.0",
+                  applicationLegalese: "© 2025 Pinkvilla",
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -168,23 +215,31 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() {
-          _currentIndex = i;
-          _selectedApiUrl = _footerTabs[i].apiUrl;
-        }),
-        selectedItemColor: Colors.pinkAccent,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.black,
-        items: List.generate(_footerTabs.length, (i) {
-          final tab = _footerTabs[i];
-          return BottomNavigationBarItem(
-            icon: Icon(_getIcon(i)),
-            label: tab.title,
-          );
-        }),
-      ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() {
+            _currentIndex = i;
+            _selectedApiUrl = _footerTabs[i].apiUrl;
+          }),
+          selectedItemColor: Colors.pinkAccent,
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Colors.black,
+          items: List.generate(_footerTabs.length, (i) {
+            final tab = _footerTabs[i];
+            final isSelected = i == _currentIndex;
+            final imageUrl = tab.imageUrl;
+
+            return BottomNavigationBarItem(
+              icon: Image.network(
+                imageUrl,
+                width: 24,
+                height: 24,
+                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+              ),
+              label: tab.title,
+            );
+          }),
+        ),
     );
   }
 }
