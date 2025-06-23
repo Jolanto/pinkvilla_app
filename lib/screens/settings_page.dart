@@ -1,43 +1,98 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/url_launcher.dart';
 
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+class SettingsPage extends StatefulWidget {
+  final bool isDarkMode;
+  final ValueChanged<bool> onToggleTheme;
+
+  const SettingsPage({
+    super.key,
+    required this.isDarkMode,
+    required this.onToggleTheme,
+  });
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late bool _isDark;
+
+  @override
+  void initState() {
+    super.initState();
+    _isDark = widget.isDarkMode;
+  }
+
+  void _handleToggle(bool value) {
+    setState(() {
+      _isDark = value;
+    });
+    widget.onToggleTheme(value);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.pinkAccent)),
-        backgroundColor: Colors.black,
+        title: Text('Settings', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontFamily: 'Poppins-Bold',
+          color: Colors.pinkAccent,
+          fontWeight: FontWeight.bold, // fallback if custom font doesn't load
+        )),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: ListView(
         children: [
           ListTile(
-            title: Text('Dark Mode', style: TextStyle(color: Colors.white)),
-            trailing: Switch(value: true, onChanged: null), // placeholder
+            title: Text(
+              'Dark Mode',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            trailing: Switch(
+              value: _isDark,
+              onChanged: _handleToggle,
+              activeColor: Colors.pinkAccent,
+            ),
           ),
           ListTile(
-            title: const Text('Privacy Policy', style: TextStyle(color: Colors.white)),
+            title: Text(
+              'Privacy Policy',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
             onTap: () => launchUrl(Uri.parse('https://www.pinkvilla.com/privacy-policy')),
           ),
           ListTile(
-            title: const Text('Contact Us', style: TextStyle(color: Colors.white)),
+            title: Text(
+              'Contact Us',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
             onTap: () => launchUrl(Uri.parse('https://www.pinkvilla.com/contact-us')),
           ),
           ListTile(
-            title: const Text('Terms Of Use', style: TextStyle(color: Colors.white)),
+            title: Text(
+              'Terms Of Use',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
             onTap: () => launchUrl(Uri.parse('https://www.pinkvilla.com/terms-of-use')),
           ),
           ListTile(
-            title: const Text('About Us', style: TextStyle(color: Colors.white)),
+            title: Text(
+              'About Us',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
             onTap: () => launchUrl(Uri.parse('https://www.pinkvilla.com/about-us')),
           ),
-          const ListTile(
-            title: Text('Version', style: TextStyle(color: Colors.white)),
-            subtitle: Text('Pinkvilla App v1.0', style: TextStyle(color: Colors.grey)),
+          ListTile(
+            title: Text(
+              'Version',
+              style: TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            subtitle: Text(
+              'Pinkvilla App v1.0',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
           ),
         ],
       ),

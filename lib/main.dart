@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
-
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+import 'theme/theme_controller.dart';
+import 'theme/app_theme.dart';
 
 void main() async{
   runApp(const MyApp());
@@ -18,11 +17,8 @@ class MyApp extends StatelessWidget {
       builder: (_, mode, __) {
         return MaterialApp(
           title: 'Pinkvilla News',
-          theme: ThemeData(
-            brightness: Brightness.dark,
-            fontFamily: 'Poppins-Regular',
-            colorSchemeSeed: Colors.pinkAccent,
-          ),
+
+          theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: mode,
           debugShowCheckedModeBanner: false,

@@ -10,6 +10,7 @@ import 'settings_page.dart';
 import 'sections/entertainment_section.dart';
 import 'sections/box_office_section.dart';
 import 'sections/latest_section.dart';
+import '../theme/theme_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -90,50 +91,61 @@ class _HomeScreenState extends State<HomeScreen> {
   List<NewsArticle> get _filteredEnt =>
       _selectedCategory == 'All' ? _entAll : _entAll.where((n) => n.category == _selectedCategory).toList();
 
-  final List<IconData> _tabIcons = [
-    Icons.article,
-    Icons.fiber_new,
-    Icons.tv,
-    Icons.movie,
-    Icons.settings,
-  ];
-
-  IconData _getIcon(int index) => index < _tabIcons.length ? _tabIcons[index] : Icons.article;
 
   Widget _buildTabContent(FooterTab tab) {
     final apiUrlToUse = _selectedApiUrl.isNotEmpty ? _selectedApiUrl : tab.apiUrl;
+
     return FutureBuilder<List<NewsArticle>>(
       future: _service.fetchArticlesFromUrl(apiUrlToUse),
       builder: (_, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snap.hasError) {
-          return Center(child: Text('Error: \${snap.error}', style: TextStyle(color: Colors.red)));
+          return Center(child: Text('Error: ${snap.error}', style: TextStyle(color: Colors.red)));
         }
 
         final list = snap.data ?? [];
+
         return RefreshIndicator(
           onRefresh: () async {
             final fresh = await _service.fetchArticlesFromUrl(apiUrlToUse);
             setState(() => _futureArticles = Future.value(fresh));
           },
           child: ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (_, i) => NewsCard(
-              article: list[i],
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => NewsDetailPage(article: list[i])),
-              ),
-            ),
+            itemCount: list.length + 1, // +1 for the header
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return HeaderNavigator(
+                  tabs: _headerTabs,
+                  selectedApiUrl: _selectedApiUrl,
+                  onTabSelected: (tab) {
+                    setState(() {
+                      _selectedApiUrl = tab.apiUrl;
+                      _futureArticles = _service.fetchArticlesByUrl(tab.apiUrl);
+                    });
+                  },
+                );
+              }
+
+              final article = list[i - 1];
+              return NewsCard(
+                article: article,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => NewsDetailPage(article: article)),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    bool isDark = themeNotifier.value == ThemeMode.dark;
     if (_isLoadingTabs || _isLoadingHeaderTabs) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -142,11 +154,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSettings = false;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('PINKVILLA', style: TextStyle(color: Colors.pinkAccent)),
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.pinkAccent), // Hamburger icon color
+        title: Text(
+        'PINKVILLA',
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontFamily: 'Poppins-Bold',
+          color: Colors.pinkAccent,
+          fontWeight: FontWeight.bold, // fallback if custom font doesn't load
+        ),
+      ),
+        centerTitle: true,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        iconTheme: const IconThemeData(color: Colors.pinkAccent),
       ),
       drawer: Drawer(
         child: ListView(
@@ -154,9 +174,15 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(color: Colors.pinkAccent),
-              child: const Text(
-                'PINKVILLA Menu',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+              child: const Center(
+                child: Text(
+                  'PINKVILLA Menu',
+                  style: TextStyle(
+                    color: Colors.white, // or Theme.of(context).colorScheme.onPrimary if not const
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             ListTile(
@@ -174,7 +200,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                  MaterialPageRoute(
+                    builder: (_) => SettingsPage(
+                      isDarkMode: isDark,
+                      onToggleTheme: (isDarkMode) {
+                        themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+                      },
+                    ),
+                  ),
                 );
               },
             ),
@@ -198,48 +231,54 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           if (!isSettings && _headerTabs.isNotEmpty)
-            HeaderNavigator(
-              tabs: _headerTabs,
-              selectedApiUrl: _selectedApiUrl,
-              onTabSelected: (tab) {
-                setState(() {
-                  _selectedApiUrl = tab.apiUrl;
-                  _futureArticles = _service.fetchArticlesByUrl(tab.apiUrl);
-                });
-              },
+            Expanded(
+              child: _buildTabContent(currentTab),
             ),
-          Expanded(
-            child: isSettings
-                ? const SettingsPage()
-                : _buildTabContent(currentTab),
-          ),
+          if (isSettings)
+            Expanded(
+              child: SettingsPage(
+                isDarkMode: themeNotifier.value == ThemeMode.dark,
+                onToggleTheme: (isDark) {
+                  themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+                },
+              ),
+            ),
         ],
       ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() {
-            _currentIndex = i;
-            _selectedApiUrl = _footerTabs[i].apiUrl;
-          }),
-          selectedItemColor: Colors.pinkAccent,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.black,
-          items: List.generate(_footerTabs.length, (i) {
-            final tab = _footerTabs[i];
-            final isSelected = i == _currentIndex;
-            final imageUrl = tab.imageUrl;
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() {
+          _currentIndex = i;
+          _selectedApiUrl = _footerTabs[i].apiUrl;
+        }),
+        selectedItemColor: Colors.pinkAccent,
+        unselectedItemColor: Theme.of(context).colorScheme.onBackground,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
 
-            return BottomNavigationBarItem(
-              icon: Image.network(
-                imageUrl,
-                width: 24,
-                height: 24,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-              ),
-              label: tab.title,
-            );
-          }),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins-SemiBold',
         ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w400,
+        ),
+
+        items: List.generate(_footerTabs.length, (i) {
+          final tab = _footerTabs[i];
+          final imageUrl = tab.imageUrl;
+
+          return BottomNavigationBarItem(
+            icon: Image.network(
+              imageUrl,
+              width: 24,
+              height: 24,
+              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+            ),
+            label: tab.title,
+          );
+        }),
+      ),
+
     );
   }
 }

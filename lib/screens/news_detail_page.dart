@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import '../models/news_article.dart';
 import '../services/news_service.dart';
+import '../theme/app_theme.dart';
 
 class NewsDetailPage extends StatelessWidget {
   final NewsArticle article;
@@ -15,9 +16,9 @@ class NewsDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Article',
             style: TextStyle(color: Colors.pinkAccent)),
-        backgroundColor: Colors.black,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       body: FutureBuilder<String>(
         future: service.fetchArticleHtml(article.id),
         builder: (_, snap) {
@@ -37,26 +38,40 @@ class NewsDetailPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: Image.network(article.imageUrl),
                 )
-                    : Container(height: 200, color: Colors.grey[700]),
+                    : Container(height: 200, color: Theme.of(context).colorScheme.onBackground),
                 const SizedBox(height: 16),
-                Text(article.category.toUpperCase(),
-                    style: const TextStyle(
-                        color: Colors.orange, fontWeight: FontWeight.bold)),
+                Text(
+                  article.category.toUpperCase(),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text(article.title,
-                    style: const TextStyle(
-                        fontFamily: 'Poppins-Medium', fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  article.title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text(article.date,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                const Divider(height: 32, color: Colors.grey),
+                Text(
+                  article.date,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Divider(
+                  height: 32,
+                  color: Theme.of(context).dividerColor,
+                ),
                 Html(
                   data: content,
                   style: {
                     "*": Style(
                       fontFamily: 'Poppins-Medium',
                       fontSize: FontSize(14.0),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onBackground,
                     ),
                   },
                 ),

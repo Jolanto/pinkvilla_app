@@ -12,28 +12,60 @@ class NewsCard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Card(
-        color: Colors.grey[900],
+        color: Theme.of(context).appBarTheme.backgroundColor,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             article.imageUrl.isNotEmpty
-                ? Image.network(article.imageUrl)
-                : Container(height: 180, color: Colors.grey),
+                ? ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+              child: Image.network(
+                article.imageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 200,
+              ),
+            )
+                : Container(
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+                color: Theme.of(context).scaffoldBackgroundColor,
+              ),
+            ),
+
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(article.category.toUpperCase(),
-                      style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                  Text(
+                    article.category.toUpperCase(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(article.title,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
-                  const SizedBox(height: 8),
-                  Text(article.date,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins-Regular')),
+                  Text(
+                    article.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),Text(
+                    article.date,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
