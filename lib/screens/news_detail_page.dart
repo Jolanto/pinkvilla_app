@@ -14,8 +14,11 @@ class NewsDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Article',
-            style: TextStyle(color: Colors.pinkAccent)),
+        title: Text('Article', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontFamily: 'Poppins-Bold',
+          color: Colors.pinkAccent,
+          fontWeight: FontWeight.bold, // fallback if custom font doesn't load
+        )),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       backgroundColor: Theme.of(context).appBarTheme.backgroundColor,

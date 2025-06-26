@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'PINKVILLA Menu',
                   style: TextStyle(
-                    color: Colors.white, // or Theme.of(context).colorScheme.onPrimary if not const
+                    color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -192,6 +192,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 setState(() => _currentIndex = 0);
               },
+            ),
+            ExpansionTile(
+              leading: const Icon(Icons.view_list),
+              title: const Text('Categories'),
+              children: _headerTabs.map((tab) {
+                return ListTile(
+                  title: Text(tab.name),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _selectedApiUrl = tab.apiUrl;
+                      _futureArticles = _service.fetchArticlesByUrl(tab.apiUrl);
+                    });
+                  },
+                );
+              }).toList(),
             ),
             ListTile(
               leading: const Icon(Icons.settings),
